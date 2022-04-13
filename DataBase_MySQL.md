@@ -258,6 +258,221 @@ WHERE department_id = 90 ;
 
 ![](https://picture-1310712259.cos.ap-nanjing.myqcloud.com/6.png)
 
+## 五、运算符
+
+### 1、算术运算符
+
++，-，*，/(或DIV)，%(MOD)
+
+1. 对于加减
+
+   一个整数类型的值对整数进行加法和减法操作，结果还是一个整数；
+
+   一个整数类型的值对浮点数进行加法和减法操作，结果是一个浮点数；
+
+   在Java中，+的左右两边如果有字符串，那么表示字符串的拼接。但是在MySQL中+只表示数值相加。如果遇到非数值类型，先尝试转成数值，如果转失败，就按0计算。（补充：MySQL中字符串拼接要使用字符串函数CONCAT()实现）
+
+2. 对于乘除
+
+   一个数除以整数后，不管是否能除尽，结果都为一个浮点数；
+
+   一个数除以另一个数，除不尽时，结果为一个浮点数，并保留到小数点后4位；
+
+   在数学运算中，0不能用作除数，在MySQL中，一个数除以0为NULL。 
+
+### 2、比较运算符
+
+比较运算符用来对表达式左边的操作数和右边的操作数进行比较，**比较的结果为真则返回1，比较的结果为假则返回0**，其他情况则返回NULL。
+
+=，<=>(安全等于)，<>(!=)(不等于)，<，<=，>，>=
+
+1.  =
+
+   * 如果等号两边的值、字符串或表达式都为字符串，则MySQL会按照字符串进行比较，其比较的
+
+     是每个字符串中字符的ANSI编码是否相等。
+
+   * 如果等号两边的值一个是整数，另一个是字符串，则MySQL会将字符串转化为数字进行比较。
+
+   * **如果等号两边的值、字符串或表达式中有一个为NULL，则比较结果为NULL。**
+
+2.  <=>
+
+    安全等于运算符（<=>）与等于运算符（=）的作用是相似的， 唯一的区别 是‘<=>’可以用来对NULL进行判断。在两个操作数均为NULL时，其返回值为1，而不为NULL；当一个操作数为NULL时，其返回值为0，而不为NULL。
+
+3. 不等于运算符
+
+   不等于运算符（<>和!=）用于判断两边的数字、字符串或者表达式的值是否不相等，如果不相等则返回1，相等则返回0。不等于运算符不能判断NULL值。如果两边的值有任意一个为NULL，或两边都为NULL，则结果为NULL。
+
+### 3、非符号类型运算符
+
+![](https://picture-1310712259.cos.ap-nanjing.myqcloud.com/9.png)
+
+对于LIKE运算符
+
+LIKE运算符通常使用如下通配符：
+
+“%”：匹配0个或多个字符。 
+
+“_”：只能匹配一个字符。
+
+比如：
+
+```sql
+SELECT first_name 
+FROM employees 
+WHERE first_name LIKE 'S%';
+
+SELECT last_name 
+FROM employees 
+WHERE last_name LIKE '_o%';
+```
+
+回避特殊符号的：**使用转义符**。\就是转义字符
+
+```sql
+SELECT job_id 
+FROM jobs 
+WHERE job_id LIKE ‘IT\_%‘;
+```
+
+如果使用\表示转义，要省略ESCAPE。如果不是\，则要加上ESCAPE。 
+
+```sql
+SELECT job_id 
+FROM jobs 
+WHERE job_id LIKE ‘IT$_%‘ escape ‘$‘;
+#$就是转义字符
+```
+
+### 4、逻辑运算符
+
+![](https://picture2-1310712259.cos.ap-nanjing.myqcloud.com/10.png)
+
+**OR可以和AND一起使用，但是在使用时要注意两者的优先级，由于AND的优先级高于OR，因此先对AND两边的操作数进行操作，再与OR中的操作数结合。**
+
+当有null的时候，他们的返回值全是null
+
+### 5、位运算符
+
+位运算符是在二进制数上进行计算的运算符。位运算符会先将操作数变成二进制数，然后进行位运算，最后将计算结果从二进制变回十进制数。
+
+&，|，^，~(取反），>>，<<
+
+按位右移运算符将给定的值的二进制数的所有位右移指定的位数。右移指定的位数后，右边低位的数值被移出并丢弃，左边高位空出的位置用0补齐。
+
+## 六、排序与分页
+
+### 1、排序数据
+
+#### 1.1 排序规则
+
+使用 ORDER BY 子句排序
+	ASC（ascend）: 升序       (默认)
+	DESC（descend）:降序
+**ORDER BY 子句在SELECT语句的结尾。**
+
+#### 1.2 单列排序
+
+```sql
+SELECT last_name, job_id, department_id, hire_date
+FROM employees
+ORDER BY hire_date ;
+
+SELECT last_name, job_id, department_id, hire_date
+FROM employees
+ORDER BY hire_date DESC ;
+
+SELECT employee_id, last_name, salary*12 annsal
+FROM employees
+ORDER BY annsal;
+```
+
+#### 1.3 多列排序
+
+```sql
+SELECT last_name, department_id, salary
+FROM employees
+ORDER BY department_id, salary DESC;
+```
+
+可以使用不在SELECT列表中的列排序。
+
+在对多列进行排序的时候，首先排序的第一列必须有相同的列值，才会对第二列进行排序。如果第
+一列数据中所有值都是唯一的，将不再对第二列进行排序。
+
+### 2、分页
+
+#### 2.1 分页原理
+
+所谓分页显示，就是将数据库中的结果集，一段一段显示出来需要的条件。
+
+#### 2.2分页规则
+
+MySQL中使用 LIMIT 实现分页
+
+格式：
+
+```
+LIMIT [位置偏移量,] 行数
+```
+
+第一个“位置偏移量”参数指示MySQL从哪一行开始显示，是一个可选参数，如果不指定“位置偏移量”，将会从表中的第一条记录开始（第一条记录的位置偏移量是0，第二条记录的位置偏移量是1，以此类推）；第二个参数“行数”指示返回的记录条数。
+
+举例：
+
+```sql
+--前10条记录：
+SELECT * FROM 表名 LIMIT 0,10;
+或者
+SELECT * FROM 表名 LIMIT 10;
+--第11至20条记录：
+SELECT * FROM 表名 LIMIT 10,10;
+--第21至30条记录：
+SELECT * FROM 表名 LIMIT 20,10;
+```
+
+MySQL 8.0中可以使用“LIMIT 3 OFFSET 4”，意思是获取从第5条记录开始后面的3条记录，和“LIMIT 4,3;”返回的结果相同。
+
+分页显式公式：（当前页数-1）*每页条数，每页条数
+
+```sql
+SELECT * FROM table
+LIMIT(PageNo - 1)*PageSize,PageSize;
+```
+
+**注意：LIMIT 子句必须放在整个SELECT语句的最后！**
+
+## 七、多表查询
+
+多表查询的前提条件：这些一起查询的表之间有关系(一对一、一对多)，他们之间有关键的字段
+
+### 1、笛卡尔积(交叉连接)
+
+笛卡尔乘积是一个数学运算。假设我有两个集合 X 和 Y，那么 X 和 Y 的笛卡尔积就是 X 和 Y 的所有可能组合，也就是第一个对象来自于 X，第二个对象来自于 Y 的所有可能。组合的个数XY即为两个集合中元素个数的乘积数。
+
+比如下面就会出现笛卡尔积：
+
+```sql
+SELECT last_name, department_name
+FROM employees, departments;
+```
+
+笛卡尔积也是交叉连接，在SQL99中交叉连接是CROSS JOIN
+
+避免笛卡尔积，可以在where后面加入有效的连接条件
+
+```sql
+SELECT table1.column, table2.column
+FROM table1, table2
+WHERE table1.column1 = table2.column2; #连接条件
+```
+
+### 2、多表查询的分类
+
+#### 2.1 等值连接 VS 非等值连接
 
 
-111
+
+
+
