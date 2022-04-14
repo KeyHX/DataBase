@@ -1,4 +1,4 @@
-# Mysql数据库
+# Mysql基础篇
 
 ## 一、数据库相关概念
 
@@ -204,7 +204,8 @@ SELECT 查询还可以对常数进行查询。对的，就是在 SELECT 查询�
 比如说，我们想对 employees 数据表中的员工姓名进行查询，同时增加一列字段 corporation ，这个字段固定值为“尚硅谷”，可以这样写：
 
 ```sql
-SELECT '尚硅谷' as corporation, last_name FROM employees;
+SELECT '尚硅谷' as corporation, last_name 
+FROM employees;
 ```
 
 则列名为corporation，里面的值全为尚硅谷
@@ -312,9 +313,9 @@ WHERE department_id = 90 ;
 
 LIKE运算符通常使用如下通配符：
 
-“%”：匹配0个或多个字符。 
+**“%”：匹配0个或多个字符。** 
 
-“_”：只能匹配一个字符。
+**“_”：只能匹配一个字符。**
 
 比如：
 
@@ -342,7 +343,7 @@ WHERE job_id LIKE ‘IT\_%‘;
 SELECT job_id 
 FROM jobs 
 WHERE job_id LIKE ‘IT$_%‘ escape ‘$‘;
-#$就是转义字符
+#用escape标注 $就是转义字符
 ```
 
 ### 4、逻辑运算符
@@ -417,7 +418,7 @@ MySQL中使用 LIMIT 实现分页
 LIMIT [位置偏移量,] 行数
 ```
 
-第一个“位置偏移量”参数指示MySQL从哪一行开始显示，是一个可选参数，如果不指定“位置偏移量”，将会从表中的第一条记录开始（第一条记录的位置偏移量是0，第二条记录的位置偏移量是1，以此类推）；第二个参数“行数”指示返回的记录条数。
+第一个“位置偏移量”参数指示MySQL从哪一行开始显示（位偏移量就是index，开始的第一个索引），是一个可选参数，如果不指定“位置偏移量”，将会从表中的第一条记录开始（第一条记录的位置偏移量是0，第二条记录的位置偏移量是1，以此类推）；第二个参数“行数”指示返回的记录条数。
 
 举例：
 
@@ -471,6 +472,376 @@ WHERE table1.column1 = table2.column2; #连接条件
 ### 2、多表查询的分类
 
 #### 2.1 等值连接 VS 非等值连接
+
+1. 等值连接
+
+   ![](https://picture2-1310712259.cos.ap-nanjing.myqcloud.com/3.png)
+
+```sql
+SELECT employees.employee_id, employees.last_name,
+	 	employees.department_id, departments.department_id,
+		departments.location_id
+FROM employees, departments
+WHERE employees.department_id = departments.department_id;
+```
+
+![](https://picture2-1310712259.cos.ap-nanjing.myqcloud.com/4.png)
+
+注意：
+
+* 在多个表中具有相同的列时，必须在列名之前加上表名的前缀
+
+  ```sql
+  SELECT employees.last_name, departments.department_name,employees.department_id
+  FROM employees, departments
+  WHERE employees.department_id = departments.department_id;
+  ```
+
+* 使用表的别名可以简化查询，使用别名作为前缀可以提高查询的效率（使用的时候建议加上别名）
+
+  ```sql
+  SELECT e.employee_id, e.last_name, e.department_id,
+  d.department_id, d.location_id
+  FROM employees e , departments d
+  WHERE e.department_id = d.department_id;
+  ```
+
+  一旦我们使用了表的别名，则在查询字段和过滤条件中只能使用别名，不能出现原有的表名
+
+* 结论：在连接n个表的时候，至少需要n - 1个连接条件
+
+  ```sql
+  SELECT employee_id,last_name,department_name,city
+  FROM employees e,departments d,locations l
+  WHERE e.`department_id` = d.`department_id`
+  AND d.location_id = l.location_id;
+  ```
+
+  
+
+2. 非等值连接
+
+   ```sql
+   SELECT e.last_name, e.salary, j.grade_level
+   FROM employees e, job_grades j
+   WHERE e.salary BETWEEN j.lowest_sal AND j.highest_sal;
+   ```
+
+#### 2.2 自连接 vs 非自连接
+
+1. 自连接
+
+   使用的是同一张表，只是用取别名的方式虚拟称两张表以代表不同的意义
+
+   ```sql
+   #练习：查询员工id，员工姓名，管理者的id和姓名
+   SELECT emp.employee_id,emp.last_name,mgr.employee_id,mgr.last_name
+   FROM employees emp,employees mgr
+   WHERE emp.manager_id = mgr.employee_id;
+   ```
+
+2. 非自连接
+
+   2.1 节都是非自连接
+
+#### 2.3 内连接 vs 外连接
+
+1. 内连接：合并具有同一列的两个以上的表的行，结果集中不包含一个表与另一个表不匹配的行
+
+   ```sql
+   SELECT employee_id,last_name
+   FROM employees e,departments d
+   WHERE e.`department_id` = d.`department_id`;
+   ```
+
+2.  外连接：合并具有同一列的两个以上的表的行，结果集中除了包含一个表与另一个表匹配的行，还查询到左表或右表中不匹配的行
+
+   左外连接：两个表在连接过程中除了返回满足连接条件的行以外还返回左表中不满足条件的行
+
+   右外连接：两个表在连接过程中除了返回满足连接条件的行以外还返回右表中不满足条件的行
+
+   上面的语法是SQL92实现的内连接，MySQL不支持SQL92实现外连接
+
+   主要讲SQL99实现多表查询
+
+   * SQL99语法实现内连接：
+
+   语法：
+
+   ```sql
+   SELECT 字段列表
+   FROM A表 INNER JOIN B表
+   ON 关联条件
+   WHERE 等其他子句;
+   ```
+
+   举例：
+
+   ```sql
+   #SQL99语法实现内连接
+   SELECT last_name,department_name
+   FROM employees e INNER JOIN departments d #inner可以省略
+   ON e.department_id = d.department_id;
+   
+   SELECT last_name,department_name,city
+   FROM employees e JOIN departments d
+   ON e.department_id = d.department_id
+   JOIN lication l
+   ON d.location_id = l.location_id
+   ```
+
+   
+
+   * SQL99语法实现外连接
+
+   ```sql
+   #查询 所有（关键字，有所有说明是外连接） 员工的last_name,department_name信息
+   #左外连接
+   #语法：
+   SELECT 字段列表
+   FROM A表 LEFT OUTER JOIN B表
+   ON 关联条件
+   WHERE 等其他子句;
+   #举例：
+   SELECT last_name,department_name
+   FROM employees e LEFT OUTER JOIN departments d 
+   ON e.department_id = d.department_id;
+   
+   #右外连接
+   #语法：
+   SELECT 字段列表
+   FROM A表 RIGHT OUTER JOIN B表
+   ON 关联条件
+   WHERE 等其他子句;
+   #举例
+   SELECT last_name,department_name
+   FROM employees e RIGHT OUTER JOIN departments d 
+   ON e.department_id = d.department_id;
+   ```
+
+   * 满外连接 = 左右表匹配的数据 + 左表没有匹配到的数据 + 右表没有匹配到的数据
+
+     ```sql
+     #满外连接：:mysql不支持full outer join
+     SELECT last_name,department_name
+     FROM employees e FULL OUTER JOIN departments d 
+     ON e.department_id = d.department_id;
+     ```
+
+   
+
+### 3、UNION的使用
+
+作用：合并查询结果 利用UNION关键字，可以给出多条SELECT语句，并将它们的结果组合成单个结果集。合并时，两个表对应的列数和数据类型必须相同，并且相互对应。各个SELECT语句之间使用UNION或UNION ALL关键字分隔。
+
+语法格式：
+
+```sql
+SELECT column,... FROM table1
+UNION [ALL]
+SELECT column,... FROM table2
+```
+
+UNION  与 UNION ALL 的区别
+
+UNION 操作符返回两个查询的结果集的并集，去除重复记录
+
+![](https://picture2-1310712259.cos.ap-nanjing.myqcloud.com/5.png)
+
+
+
+UNION ALL操作符返回两个查询的结果集的并集。对于两个结果集的重复部分，不去重。
+
+![](https://picture2-1310712259.cos.ap-nanjing.myqcloud.com/6.png)
+
+举例：
+
+```sql
+#方式1
+SELECT * FROM employees WHERE email LIKE '%a%' OR department_id>90;
+
+#方式2
+SELECT * FROM employees WHERE email LIKE '%a%'
+UNION
+SELECT * FROM employees WHERE department_id>90;
+```
+
+### 4、7种SQL JOINS的实现
+
+![](https://picture2-1310712259.cos.ap-nanjing.myqcloud.com/7.png)
+
+```sql
+#中图：内连接
+SELECT employee_id,department_name
+FROM employees e INNER JOIN departments d
+ON e.department_id = d.department_id;
+
+#左上图：左外连接
+SELECT employee_id,department_name
+FROM employees e LEFT OUTER JOIN departments d
+ON e.department_id = d.department_id;
+
+#右上图：右外连接
+SELECT employee_id,department_name
+FROM employees e RIGHT OUTER JOIN departments d
+ON e.department_id = d.department_id;
+
+#左中图：
+SELECT employee_id,department_name,d.department_id 
+FROM employees e LEFT OUTER JOIN departments d
+ON e.department_id = d.department_id
+WHERE d.department_id IS NULL;#找B中为null的，但B中没有null的，所以中间部分就没有了
+
+#右中图
+SELECT employee_id,department_name
+FROM employees e RIGHT OUTER JOIN departments d
+ON e.department_id = d.department_id
+WHERE e.department_id IS NULL;
+
+#左下图：满外连接
+#方式一：左上图 UNION ALL  右中图
+SELECT employee_id,department_name
+FROM employees e RIGHT OUTER JOIN departments d
+ON e.department_id = d.department_id
+UNION ALL
+SELECT employee_id,department_name
+FROM employees e RIGHT OUTER JOIN departments d
+ON e.department_id = d.department_id
+WHERE e.department_id IS NULL;
+
+#方式二：左中图 UNION ALL  右上图
+SELECT employee_id,department_name
+FROM employees e LEFT OUTER JOIN departments d
+ON e.department_id = d.department_id
+WHERE d.department_id IS NULL
+UNION ALL
+SELECT employee_id,department_name
+FROM employees e RIGHT OUTER JOIN departments d
+ON e.department_id = d.department_id;
+
+#右下图：左中图 UNION ALL 右中图
+SELECT employee_id,department_name
+FROM employees e LEFT OUTER JOIN departments d
+ON e.department_id = d.department_id
+WHERE d.department_id IS NULL
+UNION ALL
+SELECT employee_id,department_name
+FROM employees e RIGHT OUTER JOIN departments d
+ON e.department_id = d.department_id
+WHERE e.department_id IS NULL;
+```
+
+### 5、SQL99语法新特性
+
+#### 5.1自然连接
+
+SQL99 在 SQL92 的基础上提供了一些特殊语法，比如 NATURAL JOIN 用来表示自然连接。我们可以把自然连接理解为SQL92 中的等值连接。**它会帮你自动查询两张连接表中所有相同的字段**，然后进行等值连接。
+
+在SQL92标准中：
+
+```sql
+SELECT employee_id,last_name,department_name
+FROM employees e JOIN departments d
+ON e.`department_id` = d.`department_id`
+AND e.`manager_id` = d.`manager_id`;
+```
+
+在 SQL99 中你可以写成：
+
+```sql
+SELECT employee_id,last_name,department_name
+FROM employees e NATURAL JOIN departments d;
+```
+
+#### 5.2 USING连接
+
+当我们进行连接的时候，SQL99还支持使用 USING 指定数据表里的同名字段进行等值连接。但是只能配合JOIN一起使用。比如：
+
+```sql
+SELECT employee_id,last_name,department_name
+FROM employees e JOIN departments d
+USING (department_id);
+```
+
+
+
+## 八、函数
+
+### 1、函数的分类
+
+MySQL提供的内置函数从实现的功能角度可以分为**数值函数、字符串函数、日期和时间函数、流程控制函数、加密与解密函数、获取MySQL信息函数、聚合函数**等。这里，我将这些丰富的内置函数再分为两类： 单行函数、聚合函数（或分组函数） 。单行函数接受参数返回一个结果，只对一行进行变换，每行返回一个结果，参数可以是一列或一个值。
+
+### 2、数值函数
+
+#### 2.1 基本函数
+
+![](https://picture2-1310712259.cos.ap-nanjing.myqcloud.com/8.png)
+
+#### 2.2 角度与弧度互换函数
+
+![](https://picture2-1310712259.cos.ap-nanjing.myqcloud.com/9.png)
+
+#### 2.3 三角函数
+
+![](https://picture2-1310712259.cos.ap-nanjing.myqcloud.com/11.png)
+
+#### 2.4 指数与对数
+
+![](https://picture2-1310712259.cos.ap-nanjing.myqcloud.com/12.png)
+
+#### 2.5 进制间转换
+
+![](https://picture2-1310712259.cos.ap-nanjing.myqcloud.com/13.png)
+
+### 3、字符串函数
+
+注意：在MySQL种，字符串的位置是从1开始
+
+![](https://picture2-1310712259.cos.ap-nanjing.myqcloud.com/14.png)
+
+![](https://picture2-1310712259.cos.ap-nanjing.myqcloud.com/15.png)
+
+![](https://picture2-1310712259.cos.ap-nanjing.myqcloud.com/16.png)
+
+### 4、日期与时间函数
+
+#### 4.1获取日期、时间
+
+![](https://picture2-1310712259.cos.ap-nanjing.myqcloud.com/17.png)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
